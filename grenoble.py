@@ -37,10 +37,10 @@ class Window(QMainWindow):
         self.statusBar().showMessage('Translating...')
         self.file = QtWidgets.QFileDialog.getOpenFileName(self, 'Select file to translate', filter='*.tnt')[0]
         self.label.setText(self.file)
-        #try:
-        self.translate()
-        #except:
-        #    QtWidgets.QMessageBox.critical(self, "Critical error", "Unsupported file.", QtWidgets.QMessageBox.Ok)
+        try:
+            self.translate()
+        except:
+            QtWidgets.QMessageBox.critical(self, "Critical error", "Unsupported file.", QtWidgets.QMessageBox.Ok)
         self.statusBar().setStyleSheet("QStatusBar{padding-left:8px;background:rgba(0,255,0,255);color:black;font-weight:bold;}")
         self.statusBar().showMessage('File translated!')
 
@@ -94,7 +94,10 @@ class Window(QMainWindow):
                 elif tnt.params['Sequence']['Delay'][i][3] != '':
                     typ = 't1'
                     table = tnt.params['Sequence']['Delay'][i][3]
-        
+                else:
+                    # measurement without tables
+                    typ = 'no-table'
+
             output.write('%Variables : level1%\n')
             if typ == 'fsw' or typ == 'att':
                 output.write('Frequency\t')
