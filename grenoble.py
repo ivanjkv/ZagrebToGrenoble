@@ -16,7 +16,7 @@ import sys
 class Window(QMainWindow):
     def __init__(self):
         super(Window, self).__init__()
-        self.setGeometry(50, 50, 340, 180)
+        self.setGeometry(50, 50, 340, 220)
         self.setWindowTitle('Zagreb to Grenoble')
         self.setWindowIcon(QtGui.QIcon('tg.ico'))
         self.statusBar()
@@ -25,10 +25,10 @@ class Window(QMainWindow):
         self.list = QtWidgets.QListWidget(self)
         self.list.addItem('... no file selected ...')
         self.list.move(20,20)
-        self.list.resize(300,80)
+        self.list.resize(300,120)
 
-        btnSelectFile = QtWidgets.QPushButton('Select .tnt file', self)
-        btnSelectFile.setGeometry(QtCore.QRect(80,110,180,30))
+        btnSelectFile = QtWidgets.QPushButton('Select .tnt file(s)', self)
+        btnSelectFile.setGeometry(QtCore.QRect(80,150,180,30))
         btnSelectFile.clicked.connect(self.browse)
 
         self.files = []

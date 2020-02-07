@@ -276,12 +276,13 @@ class TNTReader():
             # Check if .tnt file is valid
             tntmagic = np.frombuffer(tntfile.read(self.TNTMAGIC.itemsize),
                                      self.TNTMAGIC, count=1)[0]
-    
+
             if not self.TNTMAGIC_RE.match(tntmagic):
                 err = ("Invalid magic number (is '%s' really TNMR file?): %s" %
                        (filename, tntmagic))
                 raise ValueError(err)
-    
+            self.version = tntmagic.decode()    #determine .tnt file version
+
             # Read in the section headers
             tnthdrbytes = tntfile.read(self.TNTTLV.itemsize)
             while(self.TNTTLV.itemsize == len(tnthdrbytes)):
@@ -293,6 +294,7 @@ class TNTReader():
                 if tlv['tag'].decode() == 'PSEQ':
                     # PSEQ stucture doesn't have length parameter, so we go back 4 bytes.
                     tntfile.seek(-4, 1)
+                    self.start = tntfile.tell()
                     hdrdict['data'] = tntfile.read()
                     hdrdict['length'] = len(hdrdict['data'])
                 else:
@@ -382,17 +384,37 @@ class TNTReader():
     
         # Read TNMR tables and store them into Dictionary
         # Old TNMR has integer N followed by N tables
-        # New TNMR has integer N followed by N*4 bytes of blank space before integer number of tables
-        dic['NTables'] = np.frombuffer(binary.read(4), '<u4')[0]
-        if np.frombuffer(binary.read(4), '<u4')[0] == 0:
-            binary.seek((dic['NTables']-1)*4,1) # -1 because we already read 4 bytes
+        # TNT1.007 version has integer 128 blanks than N followed by N*4 bytes of blank space before integer number of tables
+        # TNT1.008 version has integer N followed by N*4 bytes of blank space before integer number of tables
+        if self.version == 'TNT1.007':
+            binary.seek(128,1)
+            binary.seek(np.frombuffer(binary.read(4), '<u4')[0]*4,1)
             dic['NTables'] = np.frombuffer(binary.read(4), '<u4')[0]
+        elif self.version == 'TNT1.008':
+            binary.seek(np.frombuffer(binary.read(4), '<u4')[0]*4,1)
+            dic['NTables'] = np.frombuffer(binary.read(4), '<u4')[0]
+        else:
+            dic['NTables'] = np.frombuffer(binary.read(4), '<u4')[0]
+
+        # Create dictionaries to store tables
         dic['Tables'] = dict()
+        dic['+ Adds'] = dict()
+        dic['Unknowns'] = dict()
+
         for table in range(dic['NTables']):
-            tab_name = binary.read_string().decode()
-            dic['Tables'][tab_name] = [i for i in binary.read_string().decode().split('\r\n')]
-            binary.seek(16,1) # 16 bytes of empty space
-            binary.seek(56,1) # some data / find meaning!
+            tab_name = binary.read_string().decode('ansi')
+            dic['Tables'][tab_name] = [i for i in binary.read_string().decode().replace(' ','\r\n').split('\r\n')]
+            if binary.read_string() == b'': # can't compare versions; exception occurs when an old file is saved by new TNMR
+                binary.seek(12,1) # 16 bytes of empty space (-4 because string already read)
+                binary.seek(56,1) # some data / find meaning!
+            else:
+                # binary.read_string() # '+ Add' (string already read)
+                dic['+ Adds'][tab_name] = binary.read_string() # '+ Add 'data table'
+                binary.read_string() # 'Every pass'
+                binary.seek(36,1) # some data / find meaning!
+                dic['Unknowns'] = [binary.read_string() for _ in range(3)]
+                binary.seek(12,1) # skip 3 integers
+
         binary.seek(2, 1)
         return dic
 
