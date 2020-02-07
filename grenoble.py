@@ -16,39 +16,43 @@ import sys
 class Window(QMainWindow):
     def __init__(self):
         super(Window, self).__init__()
-        self.setGeometry(50, 50, 340, 120)
+        self.setGeometry(50, 50, 340, 180)
         self.setWindowTitle('Zagreb to Grenoble')
+        self.setWindowIcon(QtGui.QIcon('tg.ico'))
         self.statusBar()
 
 
-        self.label = QtWidgets.QLineEdit(self)
-        self.label.setText('... no file selected ...')
-        self.label.move(20,20)
-        self.label.resize(300,20)
+        self.list = QtWidgets.QListWidget(self)
+        self.list.addItem('... no file selected ...')
+        self.list.move(20,20)
+        self.list.resize(300,80)
 
         btnSelectFile = QtWidgets.QPushButton('Select .tnt file', self)
-        btnSelectFile.setGeometry(QtCore.QRect(80,50,180,30))
+        btnSelectFile.setGeometry(QtCore.QRect(80,110,180,30))
         btnSelectFile.clicked.connect(self.browse)
 
-        self.file = ''
+        self.files = []
 
     def browse(self):
         self.statusBar().setStyleSheet("QStatusBar{padding-left:8px;background:rgba(255,0,0,255);color:black;font-weight:bold;}")
         self.statusBar().showMessage('Translating...')
-        self.file = QtWidgets.QFileDialog.getOpenFileName(self, 'Select file to translate', filter='*.tnt')[0]
-        self.label.setText(self.file)
+        self.files = QtWidgets.QFileDialog.getOpenFileNames(self, 'Select file(s) to translate', filter='*.tnt')[0]
+        self.list.clear()
         try:
-            self.translate()
+            for i, file in enumerate(self.files):
+                self.translate(file)
+                self.list.addItem(file)
         except:
-            QtWidgets.QMessageBox.critical(self, "Critical error", "Unsupported file.", QtWidgets.QMessageBox.Ok)
+            QtWidgets.QMessageBox.critical(self, "Critical error", "Unsupported file. {} file(s) translated.".format(i) , QtWidgets.QMessageBox.Ok)
+            i-=1
         self.statusBar().setStyleSheet("QStatusBar{padding-left:8px;background:rgba(0,255,0,255);color:black;font-weight:bold;}")
-        self.statusBar().showMessage('File translated!')
+        self.statusBar().showMessage('{} file(s) translated!'.format(i+1))
 
 
-    def translate(self):
-        tnt = TNTReader(self.file)
+    def translate(self, file):
+        tnt = TNTReader(file)
         
-        with open(self.file.replace('.tnt', '.dat'), 'w') as output:
+        with open(file.replace('.tnt', '.dat'), 'w') as output:
             # header, comments and details
             output.write('%%\nPython translator\nFile translated from Tecmag spectrometer (TNT format)\n%End%\n\n')
             output.write('%Program Comments%\nPulse prog comments\n%End%\n\n')
