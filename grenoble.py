@@ -88,19 +88,20 @@ class Window(QMainWindow):
         
             # Variables
             # Identify a type of measurement
+            typ = ''
             for i in range(tnt.params['NCols']):
                 if tnt.params['Sequence']['F1_Freq'][i][3] != '':
                     typ = 'fsw'
                     table = tnt.params['Sequence']['F1_Freq'][i][3] # index [3] is a 2D table
+                    break
                 elif tnt.params['Sequence']['F1_Atten'][i][3] != '':
                     typ = 'att'
                     table = tnt.params['Sequence']['F1_Atten'][i][3]
+                    break
                 elif tnt.params['Sequence']['Delay'][i][3] != '':
                     typ = 't1'
                     table = tnt.params['Sequence']['Delay'][i][3]
-                else:
-                    # measurement without tables
-                    typ = 'no-table'
+                    break
 
             output.write('%Variables : level1%\n')
             if typ == 'fsw' or typ == 'att':
