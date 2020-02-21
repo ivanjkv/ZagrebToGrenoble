@@ -110,7 +110,7 @@ class Window(QMainWindow):
                 output.write('\t'.join(frequencies))
             elif typ == 't1':
                 output.write('delta\t')
-                output.write('\t'.join(tnt.params['Tables'][table]).replace('u', ' us').replace('m', ' ms'))
+                output.write(' us\t'.join(tnt.params['Tables'][table]).replace('u us', ' us').replace('m us', ' ms'))
             else:
                 output.write('Frequency\t')
                 output.write('{0:.6f} MHz'.format(tnt.params['ob_freq'][0]))
