@@ -414,8 +414,10 @@ class TNTReader():
                 binary.seek(36,1) # some data / find meaning!
                 dic['Unknowns'] = [binary.read_string() for _ in range(3)]
                 binary.seek(12,1) # skip 3 integers
-
-        binary.seek(2, 1)
+        print('aa')
+        binary.seek(4,1)
+        #print(np.frombuffer(binary.read(4), '<u4')[0])
+        print(binary.read_string())
         return dic
 
 

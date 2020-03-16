@@ -20,6 +20,7 @@ class Window(QMainWindow):
         self.setWindowTitle('Zagreb to Grenoble')
         self.setWindowIcon(QtGui.QIcon('tg.ico'))
         self.statusBar()
+        self.merge = False
 
 
         self.list = QtWidgets.QListWidget(self)
@@ -28,34 +29,57 @@ class Window(QMainWindow):
         self.list.resize(300,120)
 
         btnSelectFile = QtWidgets.QPushButton('Select .tnt file(s)', self)
-        btnSelectFile.setGeometry(QtCore.QRect(80,150,180,30))
+        btnSelectFile.setGeometry(QtCore.QRect(40,150,180,30))
         btnSelectFile.clicked.connect(self.browse)
+
+        self.checkMergeFiles = QtWidgets.QCheckBox('Merge', self)
+        self.checkMergeFiles.setGeometry(QtCore.QRect(240,150,180,30))
 
         self.files = []
 
     def browse(self):
         self.statusBar().setStyleSheet("QStatusBar{padding-left:8px;background:rgba(255,0,0,255);color:black;font-weight:bold;}")
         self.statusBar().showMessage('Translating...')
+        i = -1 # Number of files
         self.files = QtWidgets.QFileDialog.getOpenFileNames(self, 'Select file(s) to translate', filter='*.tnt')[0]
         self.list.clear()
         try:
             for i, file in enumerate(self.files):
-                self.translate(file)
+                measurements, scans, data = self.translate(file)
                 self.list.addItem(file)
+                if self.checkMergeFiles.isChecked():
+                    if not i: # if translating a new file initialize variables
+                        self.merged_scans = scans
+                        self.merged_measurements = measurements
+                        self.merged_data = data
+                    else:
+                        # check if the number of measurements is the same
+                        if self.merged_measurements == measurements:
+                            self.merged_scans += scans
+                            self.merged_data += data
+                        else:
+                            raise Exception()
+            if self.checkMergeFiles.isChecked():
+                # header is taken from the first file
+                self.translate(self.files[0], merged = True)
         except:
-            QtWidgets.QMessageBox.critical(self, "Critical error", "Unsupported file. {} file(s) translated.".format(i) , QtWidgets.QMessageBox.Ok)
+            QtWidgets.QMessageBox.critical(self, "Critical error", "Unsupported file or merge error. {} file(s) translated.".format(i) , QtWidgets.QMessageBox.Ok)
             i-=1
         self.statusBar().setStyleSheet("QStatusBar{padding-left:8px;background:rgba(0,255,0,255);color:black;font-weight:bold;}")
         self.statusBar().showMessage('{} file(s) translated!'.format(i+1))
 
 
-    def translate(self, file):
+    def translate(self, file, merged = False):
         tnt = TNTReader(file)
-        
-        with open(file.replace('.tnt', '.dat'), 'w') as output:
+        if not merged:
+            file_name = file.replace('.tnt', '.dat')
+        else:
+            file_name = file.replace('.tnt', '_merged.dat')
+            
+        with open(file_name, 'w') as output:
             # header, comments and details
             output.write('%%\nPython translator\nFile translated from Tecmag spectrometer (TNT format)\n%End%\n\n')
-            output.write('%Program Comments%\nPulse prog comments\n%End%\n\n')
+            output.write('%Program Comments%\nRepeat times: {}\n%End%\n\n'.format(int(tnt.params['repeat_times'])))
             output.write('%Pulse Program%\nPulse prog details\n%End%\n\n')
         
             # PhaseList
@@ -110,7 +134,7 @@ class Window(QMainWindow):
                 output.write('\t'.join(frequencies))
             elif typ == 't1':
                 output.write('delta\t')
-                output.write(' us\t'.join(tnt.params['Tables'][table]).replace('u us', ' us').replace('m us', ' ms'))
+                output.write('\t'.join(list(map(lambda x: x.replace('u', ' us').replace('m', ' ms'), tnt.params['Tables'][table]))))
             else:
                 output.write('Frequency\t')
                 output.write('{0:.6f} MHz'.format(tnt.params['ob_freq'][0]))
@@ -122,16 +146,26 @@ class Window(QMainWindow):
         
             # Data output
             output.write('%Data%\n')
-            data = np.array(tnt.data)
+
+            if merged:
+                data = self.merged_data
+                scans = self.merged_scans
+            else:
+                data = np.array(tnt.data)
+                scans = int(tnt.params['actual_scans'])*int(tnt.params['repeat_times'])
+                
             for measurement in range(data.shape[1]):
                 output.write('measure {}\n'.format(measurement+1))
-                output.write('scans {}\n'.format(int(tnt.params['actual_scans'])))
+                output.write('scans {}\n'.format(scans))
                 reals = ['{0:.3E}'.format(float(np.real(data[data_point, measurement]))) for data_point in range(tnt.data.shape[0])]
                 imags = ['{0:.3E}'.format(float(np.imag(data[data_point, measurement]))) for data_point in range(tnt.data.shape[0])]
                 output.write('\t'.join(reals))
                 output.write('\n')
                 output.write('\t'.join(imags))
                 output.write('\n')
+
+            # Merging is done by a separate function once all files have been succesfully translated.
+            return (data.shape[1], scans, data)
 
 if __name__ == '__main__':
     if not QApplication.instance():
