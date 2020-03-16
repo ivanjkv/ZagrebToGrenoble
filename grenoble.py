@@ -43,28 +43,28 @@ class Window(QMainWindow):
         i = -1 # Number of files
         self.files = QtWidgets.QFileDialog.getOpenFileNames(self, 'Select file(s) to translate', filter='*.tnt')[0]
         self.list.clear()
-        try:
-            for i, file in enumerate(self.files):
-                measurements, scans, data = self.translate(file)
-                self.list.addItem(file)
-                if self.checkMergeFiles.isChecked():
-                    if not i: # if translating a new file initialize variables
-                        self.merged_scans = scans
-                        self.merged_measurements = measurements
-                        self.merged_data = data
-                    else:
-                        # check if the number of measurements is the same
-                        if self.merged_measurements == measurements:
-                            self.merged_scans += scans
-                            self.merged_data += data
-                        else:
-                            raise Exception()
+        #try:
+        for i, file in enumerate(self.files):
+            measurements, scans, data = self.translate(file)
+            self.list.addItem(file)
             if self.checkMergeFiles.isChecked():
-                # header is taken from the first file
-                self.translate(self.files[0], merged = True)
-        except:
-            QtWidgets.QMessageBox.critical(self, "Critical error", "Unsupported file or merge error. {} file(s) translated.".format(i) , QtWidgets.QMessageBox.Ok)
-            i-=1
+                if not i: # if translating a new file initialize variables
+                    self.merged_scans = scans
+                    self.merged_measurements = measurements
+                    self.merged_data = data
+                else:
+                    # check if the number of measurements is the same
+                    if self.merged_measurements == measurements:
+                        self.merged_scans += scans
+                        self.merged_data += data
+                    else:
+                        raise Exception()
+        if self.checkMergeFiles.isChecked():
+            # header is taken from the first file
+            self.translate(self.files[0], merged = True)
+        #except:
+        #    QtWidgets.QMessageBox.critical(self, "Critical error", "Unsupported file or merge error. {} file(s) translated.".format(i) , QtWidgets.QMessageBox.Ok)
+        #    i-=1
         self.statusBar().setStyleSheet("QStatusBar{padding-left:8px;background:rgba(0,255,0,255);color:black;font-weight:bold;}")
         self.statusBar().showMessage('{} file(s) translated!'.format(i+1))
 
@@ -79,7 +79,10 @@ class Window(QMainWindow):
         with open(file_name, 'w') as output:
             # header, comments and details
             output.write('%%\nPython translator\nFile translated from Tecmag spectrometer (TNT format)\n%End%\n\n')
-            output.write('%Program Comments%\nRepeat times: {}\n%End%\n\n'.format(int(tnt.params['repeat_times'])))
+            output.write('%Program Comments%\n')
+            for i, key in enumerate(list(tnt.params['Parameters'].keys())):
+                output.write('{}: {}\n'.format(key, tnt.params['Parameters'][key]['Value']))
+            output.write('Repeat times: {}\n%End%\n\n'.format(int(tnt.params['repeat_times'])))
             output.write('%Pulse Program%\nPulse prog details\n%End%\n\n')
         
             # PhaseList
@@ -142,7 +145,7 @@ class Window(QMainWindow):
         
             output.write('%Variables : level2%\n\tNone\n\tNone\n%End%\n\n')
             output.write('%Nb max of Measurements%\n{}\n%End%\n\n'.format(tnt.data.shape[1]))
-            output.write('%Comments on experiment%\nExp Comments\n%End%\n\n')
+            output.write('%Comments on experiment%\n{}\n%End%\n\n'.format(tnt.params['Comments']))
         
             # Data output
             output.write('%Data%\n')

@@ -414,10 +414,37 @@ class TNTReader():
                 binary.seek(36,1) # some data / find meaning!
                 dic['Unknowns'] = [binary.read_string() for _ in range(3)]
                 binary.seek(12,1) # skip 3 integers
-        print('aa')
-        binary.seek(4,1)
-        #print(np.frombuffer(binary.read(4), '<u4')[0])
-        print(binary.read_string())
+
+        # Now reading the rest of the file...
+
+        dic['Parameters'] = dict() # dictionary for sequence parameters                
+        if self.version == 'TNT1.007':
+            binary.read(4)       # '1' - len of following data
+            binary.read_string() # 'Sequence' tag
+            [binary.read_string() for i in range(np.frombuffer(binary.read(4), '<u4')[0])] # names of N sequence parameters such as trig, atten,...
+        if self.version == 'TNT1.008': binary.seek(4,1) # in new version there is no 'Sequence' tag, just 4 blank spaces
+        dic['NParameters'] = np.frombuffer(binary.read(4), '<u4')[0]
+        for i in range(dic['NParameters']):
+            parameter_name = binary.read_string().decode('ansi')
+            dic['Parameters'][parameter_name] = dict()
+            dic['Parameters'][parameter_name]['Flag'] = np.frombuffer(binary.read(4), '<u4')[0]
+            dic['Parameters'][parameter_name]['Value'] = binary.read_string().decode('ansi')
+            dic['Parameters'][parameter_name]['Type'] = np.frombuffer(binary.read(4), '<u4')[0] # 6 - time, 4 - double
+            dic['Parameters'][parameter_name]['Minumum'] = binary.read_string().decode('ansi')
+            dic['Parameters'][parameter_name]['Maximum'] = binary.read_string().decode('ansi')
+            binary.seek(12,1) # blanks
+            binary.read_string() # parameter name again
+            dic['Parameters'][parameter_name]['Default'] = binary.read_string().decode('ansi')
+            binary.seek(16,1) # blanks
+
+        temp = binary.read() # read the rest of the file
+        rest = BytesIO2()
+        rest.write(temp)
+        rest.seek(temp.find(b'CMNT')+4) # find 'Comment' tag and skip it
+        dic['Comments'] = 'No comments'
+        if np.frombuffer(rest.read(4), '<u4')[0]:
+            dic['Comments'] = rest.read_string().decode('ansi')
+                                        
         return dic
 
 
