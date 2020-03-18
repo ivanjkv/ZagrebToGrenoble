@@ -80,8 +80,6 @@ class Window(QMainWindow):
             # header, comments and details
             output.write('%%\nPython translator\nFile translated from Tecmag spectrometer (TNT format)\n%End%\n\n')
             output.write('%Program Comments%\n')
-            for i, key in enumerate(list(tnt.params['Parameters'].keys())):
-                output.write('{}: {}\n'.format(key, tnt.params['Parameters'][key]['Value']))
             output.write('Repeat times: {}\n%End%\n\n'.format(int(tnt.params['repeat_times'])))
             output.write('%Pulse Program%\nPulse prog details\n%End%\n\n')
         
@@ -95,8 +93,9 @@ class Window(QMainWindow):
             output.write('%loops%\n1\t0\n1\t0\n%End%\n\n')
         
             # Delays
-            output.write('%Delays%\nAcq.time\t{0:.1f}u\t0\n'.format(float(tnt.params['acq_time'])*10**6))
-            for i in range(5): output.write('\t\t0\n')
+            output.write('%Delays%\n')
+            for i, key in enumerate(list(tnt.params['Parameters'].keys())):
+                output.write('{}\t{}\t0\n'.format(key, tnt.params['Parameters'][key]['Value']))
             output.write('%End%\n\n')
         
             # Parameters
