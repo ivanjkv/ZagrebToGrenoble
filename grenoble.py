@@ -43,28 +43,28 @@ class Window(QMainWindow):
         i = -1 # Number of files
         self.files = QtWidgets.QFileDialog.getOpenFileNames(self, 'Select file(s) to translate', filter='*.tnt')[0]
         self.list.clear()
-        #try:
-        for i, file in enumerate(self.files):
-            measurements, scans, data = self.translate(file)
-            self.list.addItem(file)
-            if self.checkMergeFiles.isChecked():
-                if not i: # if translating a new file initialize variables
-                    self.merged_scans = scans
-                    self.merged_measurements = measurements
-                    self.merged_data = data
-                else:
-                    # check if the number of measurements is the same
-                    if self.merged_measurements == measurements:
-                        self.merged_scans += scans
-                        self.merged_data += data
+        try:
+            for i, file in enumerate(self.files):
+                measurements, scans, data = self.translate(file)
+                self.list.addItem(file)
+                if self.checkMergeFiles.isChecked():
+                    if not i: # if translating a new file initialize variables
+                        self.merged_scans = scans
+                        self.merged_measurements = measurements
+                        self.merged_data = data
                     else:
-                        raise Exception()
-        if self.checkMergeFiles.isChecked():
-            # header is taken from the first file
-            self.translate(self.files[0], merged = True)
-        #except:
-        #    QtWidgets.QMessageBox.critical(self, "Critical error", "Unsupported file or merge error. {} file(s) translated.".format(i) , QtWidgets.QMessageBox.Ok)
-        #    i-=1
+                        # check if the number of measurements is the same
+                        if self.merged_measurements == measurements:
+                            self.merged_scans += scans
+                            self.merged_data += data
+                        else:
+                            raise Exception()
+            if self.checkMergeFiles.isChecked():
+                # header is taken from the first file
+                self.translate(self.files[0], merged = True)
+        except:
+            QtWidgets.QMessageBox.critical(self, "Critical error", "Unsupported file or merge error. {} file(s) translated.".format(i) , QtWidgets.QMessageBox.Ok)
+            i-=1
         self.statusBar().setStyleSheet("QStatusBar{padding-left:8px;background:rgba(0,255,0,255);color:black;font-weight:bold;}")
         self.statusBar().showMessage('{} file(s) translated!'.format(i+1))
 
@@ -161,9 +161,9 @@ class Window(QMainWindow):
                 output.write('scans {}\n'.format(scans))
                 reals = ['{0:.3E}'.format(float(np.real(data[data_point, measurement]))) for data_point in range(tnt.data.shape[0])]
                 imags = ['{0:.3E}'.format(float(np.imag(data[data_point, measurement]))) for data_point in range(tnt.data.shape[0])]
-                output.write('\t'.join(reals))
-                output.write('\n')
                 output.write('\t'.join(imags))
+                output.write('\n')
+                output.write('\t'.join(reals))
                 output.write('\n')
 
             # Merging is done by a separate function once all files have been succesfully translated.

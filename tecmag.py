@@ -337,24 +337,25 @@ class TNTReader():
 
     def pseq_read(self, data):
         dic = dict()
+        
         binary = BytesIO2()
         binary.write(data)
         binary.seek(0)
 
         dic['SequenceID'] = np.frombuffer(binary.read(8), 'S8')[0].decode()
         dic['File Name'] = binary.read_string()
-        binary.seek(8, 1)
     
         if dic['SequenceID'][:4] == '1.18':
+            binary.seek(8, 1)
             dic['E-mail'] = binary.read_string()
-            binary.read_string()
+            print(binary.read_string())
     
         dic['NRows'] = np.frombuffer(binary.read(4), '<u4')[0]
         dic['NCols'] = np.frombuffer(binary.read(4), '<u4')[0]
     
         # Read TNMR sequence and store it into dictionary
         dic['Sequence'] = dict()
-    
+
         for row in range(dic['NRows']):
             # 28 bytes of useless data
             np.frombuffer(binary.read(self.PSEQROW.itemsize), self.PSEQROW, count = 1)[0]
@@ -381,12 +382,13 @@ class TNTReader():
                     for i in range(6):
                         binary.read_string()
                     binary.seek(1,1)
-    
+        
         # Read TNMR tables and store them into Dictionary
         # Old TNMR has integer N followed by N tables
-        # TNT1.007 version has integer 128 blanks than N followed by N*4 bytes of blank space before integer number of tables
+        # TNT1.003 version has 128 blanks than N followed by N*4 bytes of blank space before integer number of tables
+        # TNT1.007 version has 128 blanks than N followed by N*4 bytes of blank space before integer number of tables
         # TNT1.008 version has integer N followed by N*4 bytes of blank space before integer number of tables
-        if self.version == 'TNT1.007':
+        if self.version in ['TNT1.003', 'TNT1.004', 'TNT1.005', 'TNT1.006', 'TNT1.007']:
             binary.seek(128,1)
             binary.seek(np.frombuffer(binary.read(4), '<u4')[0]*4,1)
             dic['NTables'] = np.frombuffer(binary.read(4), '<u4')[0]
@@ -413,12 +415,15 @@ class TNTReader():
                 binary.read_string() # 'Every pass'
                 binary.seek(36,1) # some data / find meaning!
                 dic['Unknowns'] = [binary.read_string() for _ in range(3)]
-                binary.seek(12,1) # skip 3 integers
+                if self.version == 'TNT1.003':
+                    binary.seek(4,1) # skip 1 integer in TNT1.003 version
+                else:
+                    binary.seek(12,1) # skip 3 integers
 
         # Now reading the rest of the file...
-
+        
         dic['Parameters'] = dict() # dictionary for sequence parameters                
-        if self.version == 'TNT1.007':
+        if self.version in ['TNT1.003', 'TNT1.004', 'TNT1.005', 'TNT1.006', 'TNT1.007']:
             binary.read(4)       # '1' - len of following data
             binary.read_string() # 'Sequence' tag
             [binary.read_string() for i in range(np.frombuffer(binary.read(4), '<u4')[0])] # names of N sequence parameters such as trig, atten,...
