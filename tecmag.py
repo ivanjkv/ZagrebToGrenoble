@@ -348,7 +348,6 @@ class TNTReader():
         if dic['SequenceID'][:4] == '1.18':
             binary.seek(8, 1)
             dic['E-mail'] = binary.read_string()
-            print(binary.read_string())
     
         dic['NRows'] = np.frombuffer(binary.read(4), '<u4')[0]
         dic['NCols'] = np.frombuffer(binary.read(4), '<u4')[0]
