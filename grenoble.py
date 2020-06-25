@@ -43,28 +43,28 @@ class Window(QMainWindow):
         i = -1 # Number of files
         self.files = QtWidgets.QFileDialog.getOpenFileNames(self, 'Select file(s) to translate', filter='*.tnt')[0]
         self.list.clear()
-        try:
-            for i, file in enumerate(self.files):
-                measurements, scans, data = self.translate(file)
-                self.list.addItem(file)
-                if self.checkMergeFiles.isChecked():
-                    if not i: # if translating a new file initialize variables
-                        self.merged_scans = scans
-                        self.merged_measurements = measurements
-                        self.merged_data = data
-                    else:
-                        # check if the number of measurements is the same
-                        if self.merged_measurements == measurements:
-                            self.merged_scans += scans
-                            self.merged_data += data
-                        else:
-                            raise Exception()
+        #try:
+        for i, file in enumerate(self.files):
+            measurements, scans, data = self.translate(file)
+            self.list.addItem(file)
             if self.checkMergeFiles.isChecked():
-                # header is taken from the first file
-                self.translate(self.files[0], merged = True)
-        except:
-            QtWidgets.QMessageBox.critical(self, "Critical error", "Unsupported file or merge error. {} file(s) translated.".format(i) , QtWidgets.QMessageBox.Ok)
-            i-=1
+                if not i: # if translating a new file initialize variables
+                    self.merged_scans = scans
+                    self.merged_measurements = measurements
+                    self.merged_data = data
+                else:
+                    # check if the number of measurements is the same
+                    if self.merged_measurements == measurements:
+                        self.merged_scans += scans
+                        self.merged_data += data
+                    else:
+                        raise Exception()
+        if self.checkMergeFiles.isChecked():
+            # header is taken from the first file
+            self.translate(self.files[0], merged = True)
+        #except:
+        #    QtWidgets.QMessageBox.critical(self, "Critical error", "Unsupported file or merge error. {} file(s) translated.".format(i) , QtWidgets.QMessageBox.Ok)
+        #    i-=1
         self.statusBar().setStyleSheet("QStatusBar{padding-left:8px;background:rgba(0,255,0,255);color:black;font-weight:bold;}")
         self.statusBar().showMessage('{} file(s) translated!'.format(i+1))
 
@@ -132,7 +132,7 @@ class Window(QMainWindow):
             output.write('%Variables : level1%\n')
             if typ == 'fsw' or typ == 'att':
                 output.write('Frequency\t')
-                frequencies = ['{0:.6f} MHz'.format(tnt.params['ob_freq'][0]+int(offset)/10**6) for offset in tnt.params['Tables'][table]]
+                frequencies = ['{0:.6f} MHz'.format(tnt.params['ob_freq'][0]+int(offset)/10**6) if offset != '' else '{0:.6f} MHz'.format(tnt.params['ob_freq'][0]) for offset in tnt.params['Tables'][table]]
                 output.write('\t'.join(frequencies))
             elif typ == 't1':
                 output.write('delta\t')
