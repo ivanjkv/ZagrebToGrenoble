@@ -331,13 +331,18 @@ class TNTReader():
             if not name.startswith('space'):
                 self.params[name] = self.tmg2['axis_set'][name]
     
-        # update pseq data
+        # update Sequence data
         self.params.update(self.pseq_read(self.tnt_sections['PSEQ']['data']))
 
 
     def pseq_read(self, data):
+        ## Read the sequence from file ##
+
+        # initialize dictionary for saving the sequence
         dic = dict()
-        
+        dic['Message'] = ""
+
+        # extract just the sequence part of .tnt file
         binary = BytesIO2()
         binary.write(data)
         binary.seek(0)
@@ -348,7 +353,7 @@ class TNTReader():
         if dic['SequenceID'][:4] == '1.18':
             binary.seek(8, 1)
             dic['E-mail'] = binary.read_string()
-        # dodatak za Anine fileove
+
         binary.read_string()
     
         dic['NRows'] = np.frombuffer(binary.read(4), '<u4')[0]
@@ -420,28 +425,40 @@ class TNTReader():
                     binary.seek(4,1) # skip 1 integer in TNT1.003 version
                 else:
                     binary.seek(12,1) # skip 3 integers
+                    
+        # Now reading the rest of the file... version mismatch handled below!
+        checkpoint = binary.tell()
+        def version_specific_translation():
+            dic['Parameters'] = dict() # dictionary for sequence parameters                
+            if self.version in ['TNT1.003', 'TNT1.004', 'TNT1.005', 'TNT1.006', 'TNT1.007']:
+                binary.read(4)       # '1' - len of following data
+                binary.read_string() # 'Sequence' tag
+                [binary.read_string() for i in range(np.frombuffer(binary.read(4), '<u4')[0])] # names of N sequence parameters such as trig, atten,...
+            if self.version == 'TNT1.008': binary.seek(4,1) # in new version there is no 'Sequence' tag, just 4 blank spaces
+            dic['NParameters'] = np.frombuffer(binary.read(4), '<u4')[0]
+            for i in range(dic['NParameters']):
+                parameter_name = binary.read_string().decode('ansi')
+                dic['Parameters'][parameter_name] = dict()
+                dic['Parameters'][parameter_name]['Flag'] = np.frombuffer(binary.read(4), '<u4')[0]
+                dic['Parameters'][parameter_name]['Value'] = binary.read_string().decode('ansi')
+                dic['Parameters'][parameter_name]['Type'] = np.frombuffer(binary.read(4), '<u4')[0] # 6 - time, 4 - double
+                dic['Parameters'][parameter_name]['Minumum'] = binary.read_string().decode('ansi')
+                dic['Parameters'][parameter_name]['Maximum'] = binary.read_string().decode('ansi')
+                binary.seek(12,1) # blanks
+                binary.read_string() # parameter name again
+                dic['Parameters'][parameter_name]['Default'] = binary.read_string().decode('ansi')
+                binary.seek(16,1) # blanks
 
-        # Now reading the rest of the file...
-        
-        dic['Parameters'] = dict() # dictionary for sequence parameters                
-        if self.version in ['TNT1.003', 'TNT1.004', 'TNT1.005', 'TNT1.006', 'TNT1.007']:
-            binary.read(4)       # '1' - len of following data
-            binary.read_string() # 'Sequence' tag
-            [binary.read_string() for i in range(np.frombuffer(binary.read(4), '<u4')[0])] # names of N sequence parameters such as trig, atten,...
-        if self.version == 'TNT1.008': binary.seek(4,1) # in new version there is no 'Sequence' tag, just 4 blank spaces
-        dic['NParameters'] = np.frombuffer(binary.read(4), '<u4')[0]
-        for i in range(dic['NParameters']):
-            parameter_name = binary.read_string().decode('ansi')
-            dic['Parameters'][parameter_name] = dict()
-            dic['Parameters'][parameter_name]['Flag'] = np.frombuffer(binary.read(4), '<u4')[0]
-            dic['Parameters'][parameter_name]['Value'] = binary.read_string().decode('ansi')
-            dic['Parameters'][parameter_name]['Type'] = np.frombuffer(binary.read(4), '<u4')[0] # 6 - time, 4 - double
-            dic['Parameters'][parameter_name]['Minumum'] = binary.read_string().decode('ansi')
-            dic['Parameters'][parameter_name]['Maximum'] = binary.read_string().decode('ansi')
-            binary.seek(12,1) # blanks
-            binary.read_string() # parameter name again
-            dic['Parameters'][parameter_name]['Default'] = binary.read_string().decode('ansi')
-            binary.seek(16,1) # blanks
+        try:
+            version_specific_translation()
+        except:
+            # If old .tnt file is saved in new TNMR the version tag gets updated to 1.008
+            # but the sequence part of the file should be translated as the old one!
+            # Quick and dirty patch:
+            dic['Message'] = " (TNT version mismatch!)"
+            self.version='TNT1.007'
+            binary.seek(checkpoint)
+            version_specific_translation()
 
         temp = binary.read() # read the rest of the file
         rest = BytesIO2()
@@ -454,4 +471,5 @@ class TNTReader():
         return dic
 
 
-
+if __name__=="__main__":
+    tnt = TNTReader('D:\\Users\\IvanJkv\\LBCO\\20200910\\A5_63Cu_fsw_286K.tnt')
