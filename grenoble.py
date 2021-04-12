@@ -132,7 +132,7 @@ class Window(QMainWindow):
             output.write('%Variables : level1%\n')
             if typ == 'fsw' or typ == 'att':
                 output.write('Frequency\t')
-                frequencies = ['{0:.6f} MHz'.format(tnt.params['ob_freq'][0]+int(offset)/10**6) if offset != '' else '{0:.6f} MHz'.format(tnt.params['ob_freq'][0]) for offset in tnt.params['Tables'][table]]
+                frequencies = ['{0:.6f} MHz'.format(tnt.params['ob_freq'][0]+float(offset)/10**6) if offset != '' else '{0:.6f} MHz'.format(tnt.params['ob_freq'][0]) for offset in tnt.params['Tables'][table]]
                 output.write('\t'.join(frequencies))
             elif typ == 't1':
                 output.write('delta\t')
